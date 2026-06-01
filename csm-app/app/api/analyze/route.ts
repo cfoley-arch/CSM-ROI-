@@ -1,8 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const client = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 const SYSTEM_PROMPT = `You are a Customer Success Manager assistant. When given a Gong call transcript and/or recap, extract structured data and return ONLY valid JSON with no markdown, no code fences, no explanation.
 
@@ -50,29 +48,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Please analyze this call transcript and extract the structured data:\n\n${transcript}`,
-        },
-      ],
+    const model = client.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: SYSTEM_PROMPT,
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return Response.json({ error: "Unexpected response type" }, { status: 500 });
-    }
+    const result = await model.generateContent(
+      `Please analyze this call transcript and extract the structured data:\n\n${transcript}`
+    );
+    const text = result.response.text();
 
     let parsed;
     try {
-      parsed = JSON.parse(content.text);
+      parsed = JSON.parse(text);
     } catch {
-      // Try to extract JSON from the text
-      const match = content.text.match(/\{[\s\S]*\}/);
+      const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         parsed = JSON.parse(match[0]);
       } else {
