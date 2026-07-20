@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/client";
 import { parseFormNumber, parseFormString } from "@/lib/forms";
 import { ATS_ACTIONS } from "@/lib/modules/ats/actions";
 import { ATS_DEFAULT_ASSUMPTIONS } from "@/lib/modules/ats/defaults";
+import { computeLiveStatement } from "@/lib/modules/accountStatement";
 
 async function requireOwnedAccount(accountId: string) {
   const session = await auth();
@@ -117,4 +118,48 @@ export async function updateAtsAssumptions(formData: FormData) {
   });
 
   redirect(`/accounts/${account.id}`);
+}
+
+/**
+ * Freezes the live statement into a RoiStatement row — Section 1's
+ * "persisted accounts... CSMs can return later and update numbers," as a
+ * point-in-time record of exactly what was shown in a specific QBR. The
+ * saved statement view never recomputes from current data; it renders
+ * strictly from what's stored here.
+ */
+export async function generateStatement(formData: FormData) {
+  const accountId = formData.get("accountId");
+  if (typeof accountId !== "string") throw new Error("Missing accountId.");
+  const { session, account } = await requireOwnedAccount(accountId);
+
+  const fullAccount = await prisma.account.findUniqueOrThrow({
+    where: { id: account.id },
+    include: { modules: true },
+  });
+
+  const live = await computeLiveStatement(fullAccount);
+
+  const statement = await prisma.roiStatement.create({
+    data: {
+      accountId: account.id,
+      createdById: session.user.id,
+      statementPeriodLabel: live.periodLabel,
+      baselineSnapshotIds: live.baselineSnapshotIds,
+      currentSnapshotIds: live.currentSnapshotIds,
+      // Prisma's Json input type wants an index signature our domain types
+      // don't have; round-tripping through JSON.stringify guarantees this
+      // is plain, serializable data anyway (which a persisted snapshot
+      // must be), so it doubles as the type-safe way to hand it to Prisma.
+      resolvedInputs: JSON.parse(JSON.stringify(live.resolvedInputs)),
+      results: JSON.parse(
+        JSON.stringify({
+          moduleResults: live.moduleResults,
+          totalAnnualRoi: live.totalAnnualRoi,
+          net: live.net,
+        }),
+      ),
+    },
+  });
+
+  redirect(`/accounts/${account.id}/statements/${statement.id}`);
 }
