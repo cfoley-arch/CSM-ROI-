@@ -1,121 +1,93 @@
-# CSM ROI Calculator
+# CSM ROI App
 
-An interactive React dashboard for calculating the ROI of ATS (Applicant Tracking System) implementations using AI-powered insights.
+A Customer Success ROI calculator for ClearCompany CSMs — generates a
+customer-facing, print/QBR-ready ROI statement for one account at a time.
+Full spec: `csm-roi-app-build-plan.md` (shared separately; not committed —
+see Section 9 #11 on sanitizing real customer data before it leaves an
+internal environment).
 
-## Features
+**Status:** Phase 1 in progress — data model, generic module system, and
+the ATS module's calculation engine are built. UI is a bare-bones proof of
+the pipeline (auth → real account data → computed ROI), not the final
+branded statement.
 
-✨ **CSM Copilot**
-- Auto-detect industry from website
-- Auto-calculate vacancy costs and recruiter rates using Gemini AI
-- Generate professional QBR emails
-- Create actionable CSM playbooks
+## Stack
 
-📊 **ROI Analytics**
-- Compare baseline vs. current period metrics
-- Calculate hiring velocity value (cost of vacancy savings)
-- Calculate recruiter efficiency value (time saved)
-- Track adoption trends across key metrics
+- **Next.js 16** (App Router, TypeScript) — see `AGENTS.md` before touching
+  routing/data-fetching conventions if anything looks unfamiliar; this
+  version has real breaking changes vs. older Next.js knowledge.
+- **Prisma 7 + SQLite** for local dev (`@prisma/adapter-better-sqlite3`).
+  Moving to Postgres later is a provider + adapter swap — see the comment
+  at the top of `prisma/schema.prisma`; no model changes needed.
+- **Auth.js v5** (Credentials provider, JWT sessions) — one login per CSM.
+- **Zod** for module input/assumption validation.
+- **Vitest** for the calc engine's unit tests.
 
-📈 **Interactive Dashboard**
-- Real-time ROI calculations
-- Customizable assumptions (time saved per action)
-- Period-by-period metric tracking
-- Visual adoption trend indicators
+## The module system
 
-🎨 **Export & Sharing**
-- Download scorecards as PNG images
-- Copy AI-generated content to clipboard
-- Professional client presentation ready
+Per Section 8 of the build plan, every ROI module (ATS today; Onboarding,
+Performance, LMS, Background Checks, Compensation later) is a self-contained
+config satisfying `ModuleDefinition` (`src/lib/modules/types.ts`): a metrics
+schema, an assumptions schema with editable defaults, and a pure
+`calculate()` function. Adding a new module is one new folder under
+`src/lib/modules/` plus one line in `src/lib/modules/registry.ts` — no
+database or screen changes.
 
-## Quick Start
+The ATS module (`src/lib/modules/ats/`) implements Section 4 Module 1's
+granular per-action breakdown: one "Admin Time Savings" line per action
+type (texts, emails, interviews, offers, background checks, workflow
+automations, scorecards, onboarding packets), each driven by the *current*
+period's volume, plus a delta-based "Faster Hiring Productivity" line from
+the change in time-to-fill. See the doc comment at the top of
+`src/lib/modules/ats/calculate.ts` for the confirmed math.
 
-### Prerequisites
-- Node.js 16+
-- npm or yarn
+## Data model
 
-### Installation
+- `Account` — one customer, with shared client-context fields (HR hourly
+  rate, cost of vacancy/day, platform cost).
+- `AccountModule` — which modules are active for an account + assumption
+  overrides.
+- `MetricSnapshot` — a dated set of usage metrics for one account + module.
+  Per Section 5's resolved solve for the Catalyst CSV's snapshot-only
+  limitation, the app itself is the timeline: each import or manual entry
+  adds a snapshot, and a statement's baseline/current periods are just the
+  two most recent snapshots.
+- `ImportBatch` — one CSV upload event, fanning out into many snapshots.
+- `RoiStatement` — a persisted, point-in-time ROI statement (frozen inputs
+  + computed results), for "CSMs can return later and update numbers."
+
+## Real reference data
+
+`src/lib/csv/catalystImport.ts` maps the Catalyst "Whitespace Map" export
+onto the ATS module's metrics — only the columns Section 5 confirms are
+covered get mapped; everything else (texts sent, emails, workflow
+automations, time-to-fill, hires) stays manual-entry.
+
+The CSV itself is **not committed** (real customer names/ARR/health
+scores). To seed your local dev database with it:
+
+1. Drop the export at `data/catalyst-whitespace-map.csv` (see
+   `data/README.md`).
+2. `npm run db:seed`
+
+Without the CSV, seeding still creates the dev CSM login
+(`cfoley@clearcompany.com` / `changeme-dev-only` — change immediately,
+dev-only).
+
+## Getting started
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+npm run db:migrate   # applies prisma/migrations against dev.db
+npm run db:seed       # creates the dev CSM login + imports the CSV if present
+npm run dev             # http://localhost:3000
+npm test                # calc engine unit tests
 ```
 
-The app will open at `http://localhost:3000`
+## Open items (Section 9)
 
-## Configuration
-
-### Gemini API Setup
-
-To use the AI features (industry detection, playbook generation, etc.):
-
-1. Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Open `src/App.jsx` and add your API key to the `callGeminiAPI` function:
-
-```javascript
-const apiKey = "YOUR_GEMINI_API_KEY_HERE";
-```
-
-## Usage
-
-1. **Enter Foundation Details**
-   - Website URL (for auto-industry detection)
-   - Industry classification
-   - Recruiter hourly rate
-   - Cost of vacancy per day
-   - Handover/sales cost
-
-2. **Set Time Assumptions**
-   - Minutes saved per action (texts, offers, interviews, etc.)
-
-3. **Compare Periods**
-   - Baseline: Your current state metrics
-   - Current: Post-implementation metrics
-
-4. **Generate Insights**
-   - QBR Email: Professional quarterly review summary
-   - Playbook: 3 actionable CSM recommendations
-   - Scorecard: Downloadable PNG for client presentations
-
-## Key Metrics
-
-- **Total Gross Value** = Hiring Velocity + Recruiter Efficiency
-- **Hiring Velocity** = Days Saved per Hire × Cost of Vacancy
-- **Recruiter Efficiency** = Hours Saved × Recruiter Rate
-- **ROI %** = (Net Value / Sales Cost) × 100
-
-## Tech Stack
-
-- **React 18** - UI framework
-- **Tailwind CSS** - Styling
-- **Vite** - Build tool & dev server
-- **Lucide React** - Icon library
-- **Gemini API** - AI features
-- **html2canvas** - PNG export
-
-## Project Structure
-
-```
-├── src/
-│   ├── App.jsx          # Main application component
-│   ├── main.jsx         # React entry point
-│   └── index.css        # Global styles
-├── index.html           # HTML template
-├── package.json         # Dependencies & scripts
-├── vite.config.js       # Vite configuration
-├── tailwind.config.js   # Tailwind configuration
-└── postcss.config.js    # PostCSS configuration
-```
-
-## License
-
-MIT
-
-## Support
-
-For issues or feature requests, please open an issue on the repository.
+- **#7** Gong API credential timeline — pending IT. Gong-sourced fields
+  stay out of scope until credentials land.
+- **#12** Whether ClearInsights/ThoughtSpot can expose time-to-fill and
+  hires via API — until resolved, both stay manual-entry fields in the ATS
+  module.
