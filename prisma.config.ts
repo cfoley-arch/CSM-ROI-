@@ -10,6 +10,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Netlify's provisioned Postgres sets NETLIFY_DATABASE_URL instead of
+    // DATABASE_URL — fall back so `prisma migrate deploy` works there too.
+    url: process.env["DATABASE_URL"] ?? process.env["NETLIFY_DATABASE_URL"],
   },
 });

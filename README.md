@@ -53,6 +53,34 @@ Gong integration is still blocked on IT credentials (Section 9 #7).
 fine for testing with a link you control, but lock it down (an invite
 code, or disabling `/register`) before sharing more broadly.
 
+## Deploying to Netlify (no terminal required)
+
+Netlify also works — it fully supports Next.js 16's App Router and Server
+Actions via its Next.js Runtime (auto-detected, no config file needed).
+
+1. **Import this repo.** Netlify dashboard → **Add new site** → **Import an
+   existing project** → GitHub → select `cfoley-arch/CSM-ROI-` → branch
+   `claude/clearcompany-csr-roi-app-1rvr8a`. Leave build settings on
+   Netlify's Next.js defaults.
+2. **Create a Postgres database.** Site → **Database** (or **Extensions**
+   tab, depending on what your dashboard shows) → provision **Netlify
+   Database** (powered by Neon). This sets a connection-string environment
+   variable automatically — `src/lib/db/client.ts` and `prisma.config.ts`
+   both check `DATABASE_URL` first and fall back to `NETLIFY_DATABASE_URL`,
+   so it works either way Netlify names it.
+   - If the deploy still fails with a "DATABASE_URL is not set" error,
+     open Site → **Environment variables**, find whatever connection
+     string variable the database step created, and copy its value into a
+     new variable literally named `DATABASE_URL`.
+3. **Add environment variables** (Site → **Environment variables**):
+   - `AUTH_SECRET` — any random 32+ character string.
+   - `ANTHROPIC_API_KEY` — optional, only needed for "Generate QBR
+     narrative."
+4. **Deploy.** Once live, open the URL, click **Create an account**, then
+   **Import CSV** from the Accounts page.
+
+Same registration caveat as above applies.
+
 ## The module system
 
 Per Section 8 of the build plan, every ROI module (ATS today; Onboarding,
