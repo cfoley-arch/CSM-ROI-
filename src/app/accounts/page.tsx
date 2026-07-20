@@ -33,7 +33,10 @@ export default async function AccountsPage() {
       <div className="flex items-center justify-between mb-1">
         <h1 className="font-display text-3xl">Accounts</h1>
         <div className="flex items-center gap-3">
-          <Link href="/accounts/import" className="text-sm text-cc-steel hover:text-cc-cast-iron">
+          <Link
+            href="/accounts/import"
+            className="rounded-md border border-cc-cast-iron text-cc-cast-iron py-1.5 px-3 text-sm font-medium hover:bg-cc-platinum transition-colors"
+          >
             Import CSV
           </Link>
           <Link
