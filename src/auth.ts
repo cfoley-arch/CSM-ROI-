@@ -6,6 +6,10 @@ import { prisma } from "@/lib/db/client";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  // Auth.js only auto-trusts the request host on Vercel; every other host
+  // (Netlify included) needs this set explicitly or every request 500s with
+  // a generic "server configuration" error.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
