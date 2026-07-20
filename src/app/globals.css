@@ -53,3 +53,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/*
+ * PDF export (Section 3) is the browser's native print-to-PDF on this same
+ * page — no server-rendering pipeline. Without color-adjust, browsers strip
+ * background colors on print by default, which would turn the ROI verdict's
+ * cast-iron/copper card and the category badges into plain black-on-white.
+ */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 0.6in;
+  }
+}

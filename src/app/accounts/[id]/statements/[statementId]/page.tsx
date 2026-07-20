@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db/client";
 import { formatDate } from "@/lib/format";
 import { primaryButtonClass, secondaryLinkClass } from "@/components/formStyles";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 import { StatementView } from "@/components/StatementView";
 import { getModule } from "@/lib/modules/registry";
 import type { OutcomeModule, StatementResolvedInputs, StatementResults } from "@/lib/modules/accountStatement";
@@ -49,12 +50,15 @@ export default async function SavedStatementPage({
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <Link
-        href={`/accounts/${statement.account.id}/statements`}
-        className={`inline-flex items-center gap-1 ${secondaryLinkClass}`}
-      >
-        <ArrowLeft size={14} /> Statement history
-      </Link>
+      <div className="flex items-center justify-between print:hidden">
+        <Link
+          href={`/accounts/${statement.account.id}/statements`}
+          className={`inline-flex items-center gap-1 ${secondaryLinkClass}`}
+        >
+          <ArrowLeft size={14} /> Statement history
+        </Link>
+        <DownloadPdfButton />
+      </div>
 
       <StatementView
         accountName={statement.account.name}
@@ -83,7 +87,7 @@ export default async function SavedStatementPage({
         </div>
 
         {narrativeError && (
-          <div className="flex items-start gap-2 text-sm text-cc-bronze bg-cc-white-gold/60 rounded-md px-3 py-2 mb-4">
+          <div className="flex items-start gap-2 text-sm text-cc-bronze bg-cc-white-gold/60 rounded-md px-3 py-2 mb-4 print:hidden">
             <WarningCircle size={16} className="mt-0.5 shrink-0" />
             <span>Couldn&apos;t generate narrative: {narrativeError}</span>
           </div>
@@ -99,7 +103,7 @@ export default async function SavedStatementPage({
               <p className="text-xs uppercase tracking-wide text-cc-steel mb-2">QBR email draft</p>
               <p className="whitespace-pre-wrap text-sm leading-relaxed">{narrative.qbrEmail}</p>
             </div>
-            <form action={generateNarrativeAction}>
+            <form action={generateNarrativeAction} className="print:hidden">
               <input type="hidden" name="statementId" value={statement.id} />
               <button type="submit" className="text-sm text-cc-steel hover:text-cc-cast-iron">
                 Regenerate
@@ -107,7 +111,7 @@ export default async function SavedStatementPage({
             </form>
           </div>
         ) : (
-          <form action={generateNarrativeAction}>
+          <form action={generateNarrativeAction} className="print:hidden">
             <input type="hidden" name="statementId" value={statement.id} />
             <p className="text-sm text-cc-steel mb-3">
               Generate a QBR email draft and a spoken talk track from this statement&apos;s numbers.
