@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/db/client";
+import { Wordmark } from "@/components/Wordmark";
 
 export default async function AccountsPage() {
   const session = await auth();
@@ -19,22 +20,31 @@ export default async function AccountsPage() {
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: "40px auto", fontFamily: "system-ui" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <h1>Accounts</h1>
+    <main className="max-w-3xl mx-auto px-6 py-10">
+      <div className="flex items-center justify-between mb-8">
+        <Wordmark />
         <form action={logoutAction}>
-          <button type="submit">Sign out</button>
+          <button type="submit" className="text-sm text-cc-steel hover:text-cc-cast-iron">
+            Sign out
+          </button>
         </form>
       </div>
-      <p>{accounts.length} accounts owned by {session.user.name ?? session.user.email}</p>
-      <ul>
+
+      <h1 className="font-display text-3xl mb-1">Accounts</h1>
+      <p className="text-cc-steel mb-6">
+        {accounts.length} accounts owned by {session.user.name ?? session.user.email}
+      </p>
+
+      <ul className="divide-y divide-cc-brass/30 rounded-lg border border-cc-brass/30">
         {accounts.map((account) => (
-          <li key={account.id} style={{ marginBottom: 8 }}>
-            <Link href={`/accounts/${account.id}`}>{account.name}</Link>{" "}
-            <span style={{ color: "#666" }}>
-              — {account.industry ?? "Industry unknown"} —{" "}
-              {account.modules.filter((m) => m.isActive).map((m) => m.moduleKey).join(", ") || "no active modules"}
-            </span>
+          <li key={account.id}>
+            <Link href={`/accounts/${account.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-cc-platinum">
+              <span className="font-medium">{account.name}</span>
+              <span className="text-sm text-cc-steel">
+                {account.industry ?? "Industry unknown"} —{" "}
+                {account.modules.filter((m) => m.isActive).map((m) => m.moduleKey).join(", ") || "no active modules"}
+              </span>
+            </Link>
           </li>
         ))}
       </ul>

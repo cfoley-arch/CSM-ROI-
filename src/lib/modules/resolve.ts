@@ -14,8 +14,12 @@ export async function resolveModuleResultForAccount(params: {
   configOverrides?: Record<string, unknown>;
 }): Promise<{
   result: ModuleResult;
+  baseline: Record<string, number | null>;
+  current: Record<string, number | null>;
   baselineSnapshotId: string | null;
   currentSnapshotId: string | null;
+  baselineCapturedAt: Date | null;
+  currentCapturedAt: Date | null;
 }> {
   const mod = getModule(params.moduleKey);
 
@@ -39,7 +43,11 @@ export async function resolveModuleResultForAccount(params: {
 
   return {
     result,
+    baseline,
+    current,
     baselineSnapshotId: baselineSnap?.id ?? null,
     currentSnapshotId: currentSnap?.id ?? null,
+    baselineCapturedAt: baselineSnap?.capturedAt ?? null,
+    currentCapturedAt: currentSnap?.capturedAt ?? null,
   };
 }
