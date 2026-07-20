@@ -6,22 +6,52 @@ Full spec: `csm-roi-app-build-plan.md` (shared separately; not committed —
 see Section 9 #11 on sanitizing real customer data before it leaves an
 internal environment).
 
-**Status:** Phase 1 in progress — data model, generic module system, and
-the ATS module's calculation engine are built. UI is a bare-bones proof of
-the pipeline (auth → real account data → computed ROI), not the final
-branded statement.
+**Status:** Phase 1 (ATS module) is functionally complete against the v1
+scope in Section 3 — data model, generic module system, ATS calc engine,
+manual entry, in-app CSV import, persisted/frozen statements, PDF export,
+AI-generated QBR narrative, and persona-aware framing are all built.
+Gong integration is still blocked on IT credentials (Section 9 #7).
 
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript) — see `AGENTS.md` before touching
   routing/data-fetching conventions if anything looks unfamiliar; this
   version has real breaking changes vs. older Next.js knowledge.
-- **Prisma 7 + SQLite** for local dev (`@prisma/adapter-better-sqlite3`).
-  Moving to Postgres later is a provider + adapter swap — see the comment
-  at the top of `prisma/schema.prisma`; no model changes needed.
-- **Auth.js v5** (Credentials provider, JWT sessions) — one login per CSM.
+- **Prisma 7 + Postgres** (`@prisma/adapter-pg`).
+- **Auth.js v5** (Credentials provider, JWT sessions) — one login per CSM,
+  self-service via `/register`.
+- **Anthropic API** (`@anthropic-ai/sdk`, `claude-opus-4-8`) for the QBR
+  email draft + talk track narrative — server-side only.
 - **Zod** for module input/assumption validation.
-- **Vitest** for the calc engine's unit tests.
+- **Vitest** for unit tests.
+
+## Deploying to Vercel (no terminal required)
+
+1. **Import this repo.** Vercel dashboard → **Add New** → **Project** →
+   select `cfoley-arch/CSM-ROI-` → branch
+   `claude/clearcompany-csr-roi-app-1rvr8a`.
+2. **Create a Postgres database.** Same project → **Storage** tab →
+   **Create Database** → Postgres. This automatically sets the
+   `DATABASE_URL` environment variable — no connection string to copy by
+   hand. (The build command already runs `prisma migrate deploy` — see
+   `package.json` — so the database schema applies automatically on every
+   deploy; no manual migration step.)
+3. **Add environment variables** (Project → Settings → Environment
+   Variables):
+   - `AUTH_SECRET` — generate one at
+     [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32)
+     or any random 32+ character string.
+   - `ANTHROPIC_API_KEY` — optional, only needed for "Generate QBR
+     narrative." Without it, that one button shows a clear error banner
+     instead of working; nothing else is affected.
+4. **Deploy** (or redeploy, if step 2 happened after the first deploy).
+   Once it's live, open the URL, click **Create an account** on the login
+   page to make your own CSM login (no seed script needed), then
+   **Import CSV** from the Accounts page to load the real Catalyst export.
+
+⚠️ **Registration is currently open to anyone with the deployed URL** —
+fine for testing with a link you control, but lock it down (an invite
+code, or disabling `/register`) before sharing more broadly.
 
 ## The module system
 
@@ -54,35 +84,48 @@ the change in time-to-fill. See the doc comment at the top of
   two most recent snapshots.
 - `ImportBatch` — one CSV upload event, fanning out into many snapshots.
 - `RoiStatement` — a persisted, point-in-time ROI statement (frozen inputs
-  + computed results), for "CSMs can return later and update numbers."
+  + computed results, plus optional persona tags and AI narrative), for
+  "CSMs can return later and update numbers."
 
 ## Real reference data
 
 `src/lib/csv/catalystImport.ts` maps the Catalyst "Whitespace Map" export
 onto the ATS module's metrics — only the columns Section 5 confirms are
 covered get mapped; everything else (texts sent, emails, workflow
-automations, time-to-fill, hires) stays manual-entry.
+automations, time-to-fill, hires) stays manual-entry. Import it either
+through the **Import CSV** page in the app, or via the seed script for
+local dev.
 
 The CSV itself is **not committed** (real customer names/ARR/health
-scores). To seed your local dev database with it:
+scores) — see `data/README.md`.
 
-1. Drop the export at `data/catalyst-whitespace-map.csv` (see
-   `data/README.md`).
-2. `npm run db:seed`
+## Local development
 
-Without the CSV, seeding still creates the dev CSM login
-(`cfoley@clearcompany.com` / `changeme-dev-only` — change immediately,
-dev-only).
-
-## Getting started
+Requires a local Postgres instance (`brew install postgresql` +
+`brew services start postgresql`, or Docker, or any hosted free-tier
+Postgres).
 
 ```bash
 npm install
-npm run db:migrate   # applies prisma/migrations against dev.db
-npm run db:seed       # creates the dev CSM login + imports the CSV if present
-npm run dev             # http://localhost:3000
-npm test                # calc engine unit tests
 ```
+
+Create `.env`:
+
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/csmroi"
+AUTH_SECRET="<output of: npx auth secret>"
+# ANTHROPIC_API_KEY="sk-ant-..."   # optional, for narrative generation
+```
+
+```bash
+npm run db:migrate   # applies prisma/migrations
+npm run db:seed       # creates the dev CSM login + imports the CSV if present at data/catalyst-whitespace-map.csv
+npm run dev             # http://localhost:3000
+npm test                # unit tests
+```
+
+Dev login (if seeded): `cfoley@clearcompany.com` / `changeme-dev-only` —
+change this immediately, it's a dev-only default.
 
 ## Open items (Section 9)
 

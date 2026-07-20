@@ -1,14 +1,13 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
 // Prisma 7 requires an explicit driver adapter at the PrismaClient
-// constructor (schema.prisma can no longer carry a connection url). Moving
-// to Postgres later means swapping this adapter for @prisma/adapter-pg and
-// pointing DATABASE_URL at the Postgres instance — the schema itself does
-// not change.
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? "file:./dev.db",
-});
+// constructor (schema.prisma can no longer carry a connection url).
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not set — point it at a Postgres instance (see README).");
+}
+
+const adapter = new PrismaPg(process.env.DATABASE_URL);
 
 declare global {
   var __prisma: PrismaClient | undefined;

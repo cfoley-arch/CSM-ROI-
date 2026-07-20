@@ -1,14 +1,10 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 //
-// Dev uses SQLite (provider = "sqlite" below). To move to Postgres later:
-// change provider to "postgresql", point DATABASE_URL at a Postgres instance,
-// and run `prisma migrate dev` again — no model changes are required, since
-// every field type used below (String, Float, Int, Boolean, DateTime, Json)
-// and every relation is supported identically by both providers. Enums are
-// deliberately avoided (SQLite has no native enum type) — module keys and
-// snapshot sources are plain strings validated in application code (see
-// src/lib/modules/registry.ts).
+// Postgres (moved off the original SQLite dev setup so this deploys on
+// standard hosted Postgres — e.g. Vercel Postgres, Neon). Enums are
+// deliberately avoided anyway — module keys and snapshot sources are plain
+// strings validated in application code (see src/lib/modules/registry.ts).
 
 generator client {
   provider = "prisma-client"
@@ -16,7 +12,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 /// A ClearCompany CSM. Individual login per Section 9, #5.

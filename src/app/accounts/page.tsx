@@ -32,12 +32,17 @@ export default async function AccountsPage() {
 
       <div className="flex items-center justify-between mb-1">
         <h1 className="font-display text-3xl">Accounts</h1>
-        <Link
-          href="/accounts/new"
-          className="rounded-md bg-cc-cast-iron text-cc-white py-1.5 px-3 text-sm font-medium hover:bg-cc-bronze transition-colors"
-        >
-          + New account
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/accounts/import" className="text-sm text-cc-steel hover:text-cc-cast-iron">
+            Import CSV
+          </Link>
+          <Link
+            href="/accounts/new"
+            className="rounded-md bg-cc-cast-iron text-cc-white py-1.5 px-3 text-sm font-medium hover:bg-cc-bronze transition-colors"
+          >
+            + New account
+          </Link>
+        </div>
       </div>
       <p className="text-cc-steel mb-6">
         {accounts.length} accounts owned by {session.user.name ?? session.user.email}
