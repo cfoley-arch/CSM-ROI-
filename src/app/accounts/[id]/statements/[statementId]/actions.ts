@@ -49,3 +49,31 @@ export async function generateNarrativeAction(formData: FormData) {
   const base = `/accounts/${statement.accountId}/statements/${statement.id}`;
   redirect(errorMessage ? `${base}?narrativeError=${encodeURIComponent(errorMessage)}` : base);
 }
+
+/**
+ * Retags a saved statement's audience persona(s) (Section 7 / Section 9
+ * #10). Presentation only — this never touches resolvedInputs or results,
+ * so the frozen numbers stay exactly as generated; only which categories
+ * the Financial Translation section leads with changes.
+ */
+export async function updatePersonaTagsAction(formData: FormData) {
+  const statementId = formData.get("statementId");
+  if (typeof statementId !== "string") throw new Error("Missing statementId.");
+
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const statement = await prisma.roiStatement.findFirst({
+    where: { id: statementId, account: { ownerId: session.user.id } },
+  });
+  if (!statement) throw new Error("Statement not found, or not owned by the current user.");
+
+  const personaTags = formData.getAll("persona").filter((v): v is string => typeof v === "string");
+
+  await prisma.roiStatement.update({
+    where: { id: statement.id },
+    data: { personaTags: personaTags.length > 0 ? personaTags : [] },
+  });
+
+  redirect(`/accounts/${statement.accountId}/statements/${statement.id}`);
+}

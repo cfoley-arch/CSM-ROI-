@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { CalendarBlank, CurrencyDollar, Minus, Sparkle, TrendDown, TrendUp } from "@phosphor-icons/react/dist/ssr";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { OutcomeModule } from "@/lib/modules/accountStatement";
-import type { ModuleResult } from "@/lib/modules/types";
+import { ROI_CATEGORIES, type ModuleResult, type RoiCategory } from "@/lib/modules/types";
 import { ROI_CATEGORY_STYLE } from "./roiCategoryStyles";
 import { Wordmark } from "./Wordmark";
 
@@ -19,6 +19,15 @@ export interface StatementViewProps {
   headerActions?: ReactNode;
   /** e.g. "Saved Jul 20, 2026 by Colin Foley" on a saved statement, or a "Save this statement" button on the live preview. */
   banner?: ReactNode;
+  /**
+   * Section 7's persona-aware framing: which ROI categories to lead with in
+   * the Financial Translation section. Presentation only — reorders each
+   * module's line items, never recomputes them. Defaults to the natural
+   * (module-defined) order when omitted.
+   */
+  categoryOrder?: RoiCategory[];
+  /** e.g. a "Framed for: CHRO" chip row, rendered just under the header. */
+  personaSummary?: ReactNode;
 }
 
 /**
@@ -42,7 +51,18 @@ export function StatementView({
   net,
   headerActions,
   banner,
+  categoryOrder,
+  personaSummary,
 }: StatementViewProps) {
+  const order = categoryOrder ?? ROI_CATEGORIES;
+  const categoryRank = new Map<RoiCategory, number>(order.map((category, i) => [category, i]));
+  const orderedModuleResults = moduleResults.map((result) => ({
+    ...result,
+    lineItems: [...result.lineItems].sort(
+      (a, b) => (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99),
+    ),
+  }));
+
   return (
     <>
       <header className="mt-6 mb-6 flex items-start justify-between border-b border-cc-brass/40 pb-6">
@@ -53,6 +73,7 @@ export function StatementView({
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-cc-steel">
             <CalendarBlank size={14} /> Statement period: {periodLabel}
           </p>
+          {personaSummary}
         </div>
         {headerActions && <nav className="flex flex-col items-end gap-1.5 text-sm text-cc-steel">{headerActions}</nav>}
       </header>
@@ -129,7 +150,7 @@ export function StatementView({
       {/* 3. Financial translation */}
       <section className="mb-10">
         <h2 className="font-display text-xl mb-3">Financial translation</h2>
-        {moduleResults.map((result) => (
+        {orderedModuleResults.map((result) => (
           <div key={result.moduleKey} className="mb-6">
             <h3 className="text-sm font-semibold text-cc-steel mb-2">{result.moduleLabel}</h3>
             <table className="w-full text-sm border-collapse">

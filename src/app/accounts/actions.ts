@@ -138,6 +138,7 @@ export async function generateStatement(formData: FormData) {
   });
 
   const live = await computeLiveStatement(fullAccount);
+  const personaTags = formData.getAll("persona").filter((v): v is string => typeof v === "string");
 
   const statement = await prisma.roiStatement.create({
     data: {
@@ -146,6 +147,7 @@ export async function generateStatement(formData: FormData) {
       statementPeriodLabel: live.periodLabel,
       baselineSnapshotIds: live.baselineSnapshotIds,
       currentSnapshotIds: live.currentSnapshotIds,
+      personaTags: personaTags.length > 0 ? personaTags : undefined,
       // Prisma's Json input type wants an index signature our domain types
       // don't have; round-tripping through JSON.stringify guarantees this
       // is plain, serializable data anyway (which a persisted snapshot
