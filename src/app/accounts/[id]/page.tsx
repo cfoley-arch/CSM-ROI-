@@ -104,6 +104,17 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
             <CalendarBlank size={14} /> Statement period: {periodLabel}
           </p>
         </div>
+        <nav className="flex flex-col items-end gap-1.5 text-sm text-cc-steel">
+          <Link href={`/accounts/${account.id}/edit`} className="hover:text-cc-cast-iron">
+            Edit account
+          </Link>
+          <Link href={`/accounts/${account.id}/ats/entry`} className="hover:text-cc-cast-iron">
+            Log ATS usage
+          </Link>
+          <Link href={`/accounts/${account.id}/ats/assumptions`} className="hover:text-cc-cast-iron">
+            Edit ATS assumptions
+          </Link>
+        </nav>
       </header>
 
       {/* 1. Total cost of ownership */}
