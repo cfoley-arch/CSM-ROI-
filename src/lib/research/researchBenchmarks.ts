@@ -72,10 +72,12 @@ export async function researchMarketBenchmarks(params: {
     // history with the paused assistant turn appended — no new user message.
     for (let i = 0; i < 3; i++) {
       const stream = client.messages.stream({
-        model: "claude-opus-4-8",
+        model: "claude-haiku-4-5",
         max_tokens: 4096,
-        thinking: { type: "adaptive" },
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+        // web_search_20260209's dynamic filtering needs Opus 4.6+/Sonnet
+        // 4.6+/5 — Haiku 4.5 gets the basic search variant instead. Haiku
+        // 4.5 also has no adaptive-thinking mode, so `thinking` is omitted.
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
         messages,
       });
       finalMessage = await stream.finalMessage();

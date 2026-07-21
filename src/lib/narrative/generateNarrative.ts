@@ -78,7 +78,7 @@ export async function generateNarrative(params: {
   try {
     const response = await client.messages.parse(
       {
-        model: "claude-opus-4-8",
+        model: "claude-haiku-4-5",
         max_tokens: 2048,
         messages: [{ role: "user", content: buildPrompt(params) }],
         output_config: {
