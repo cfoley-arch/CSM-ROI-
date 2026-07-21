@@ -54,6 +54,7 @@ export function calculateAts(params: {
         label: action.label,
         category: "TIME_SAVED",
         amount: 0,
+        hours: hoursSaved,
         methodology: `${count.toLocaleString()} × ${minutesPerAction} min = ${hoursSaved.toFixed(
           1,
         )} hrs saved — set the account's HR hourly rate to dollarize this line.`,
@@ -67,6 +68,7 @@ export function calculateAts(params: {
       label: action.label,
       category: "TIME_SAVED",
       amount,
+      hours: hoursSaved,
       methodology: `${count.toLocaleString()} × ${minutesPerAction} min saved = ${hoursSaved.toFixed(
         1,
       )} hrs × ${currency(context.hrHourlyRate)}/hr = ${currency(amount)}`,

@@ -22,6 +22,8 @@ export interface RoiLineItem {
   amount: number;
   /** Human-readable breakdown of how `amount` was derived, for the "show the math" requirement (Section 6). */
   methodology: string;
+  /** Raw hours this line represents, when the underlying math is time-based — omitted for lines that aren't (e.g. vacancy-cost lines). Presentation-only aggregate; never affects `amount`. */
+  hours?: number;
 }
 
 /** A module's full computed output for one account + one statement period. */

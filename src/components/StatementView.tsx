@@ -1,10 +1,69 @@
 import type { ReactNode } from "react";
-import { CalendarBlank, CurrencyDollar, Minus, Sparkle, TrendDown, TrendUp } from "@phosphor-icons/react/dist/ssr";
+import {
+  Buildings,
+  CalendarBlank,
+  ChartLineUp,
+  Clock,
+  Coins,
+  CurrencyDollar,
+  Minus,
+  Percent,
+  Sparkle,
+  TrendDown,
+  TrendUp,
+  Wallet,
+} from "@phosphor-icons/react/dist/ssr";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { OutcomeModule } from "@/lib/modules/accountStatement";
 import { ROI_CATEGORIES, type ModuleResult, type RoiCategory } from "@/lib/modules/types";
 import { ROI_CATEGORY_STYLE } from "./roiCategoryStyles";
 import { Wordmark } from "./Wordmark";
+
+/** A phosphor-icons component — every icon in the set shares this prop shape. */
+type PhosphorIcon = typeof Sparkle;
+
+/** Icon per ROI category for the Financial Translation cards: clock for time-based, building for the (currently vacancy-only) cost-avoided line, dollar sign as the general cost/value fallback. */
+const CATEGORY_ICON: Record<RoiCategory, PhosphorIcon> = {
+  TIME_SAVED: Clock,
+  COST_AVOIDED: Buildings,
+  REVENUE_ENABLED: CurrencyDollar,
+  RISK_REDUCED: CurrencyDollar,
+};
+
+function ScorecardCard({
+  icon: Icon,
+  label,
+  value,
+  description,
+  emphasized,
+}: {
+  icon: PhosphorIcon;
+  label: string;
+  value: string;
+  description: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <div
+      className={
+        emphasized
+          ? "rounded-lg p-4 bg-gradient-to-br from-cc-cast-iron to-cc-bronze text-cc-white"
+          : "rounded-lg p-4 bg-cc-platinum"
+      }
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`text-xs font-semibold uppercase tracking-wide ${emphasized ? "text-cc-copper" : "text-cc-steel"}`}
+        >
+          {label}
+        </span>
+        <Icon size={18} className={emphasized ? "text-cc-copper" : "text-cc-steel"} />
+      </div>
+      <div className="font-display text-2xl mt-2">{value}</div>
+      <p className={`text-xs mt-1 ${emphasized ? "text-cc-pewter" : "text-cc-steel"}`}>{description}</p>
+    </div>
+  );
+}
 
 export interface StatementViewProps {
   accountName: string;
@@ -47,7 +106,6 @@ export function StatementView({
   platformCostPerYear,
   outcomesByModule,
   moduleResults,
-  totalAnnualRoi,
   net,
   headerActions,
   banner,
@@ -62,6 +120,20 @@ export function StatementView({
       (a, b) => (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99),
     ),
   }));
+
+  // ROI verdict scorecard aggregates — presentation-only rollups of the same
+  // per-line-item amounts already computed above; never recomputed here.
+  const allLineItems = orderedModuleResults.flatMap((result) => result.lineItems);
+  const totalHoursSaved = allLineItems.reduce((sum, item) => sum + (item.hours ?? 0), 0);
+  const laborValueCreated = allLineItems
+    .filter((item) => item.category === "TIME_SAVED")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const vacancyCostAvoided = allLineItems
+    .filter((item) => item.category === "COST_AVOIDED")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const totalValueCreated = laborValueCreated + vacancyCostAvoided;
+  const roiMultiple = platformCostPerYear ? totalValueCreated / platformCostPerYear : null;
+  const roiPercentage = platformCostPerYear && net.netAnnualRoi !== null ? (net.netAnnualRoi / platformCostPerYear) * 100 : null;
 
   return (
     <>
@@ -152,49 +224,88 @@ export function StatementView({
         <h2 className="font-display text-xl mb-3">Financial translation</h2>
         {orderedModuleResults.map((result) => (
           <div key={result.moduleKey} className="mb-6">
-            <h3 className="text-sm font-semibold text-cc-steel mb-2">{result.moduleLabel}</h3>
-            <table className="w-full text-sm border-collapse">
-              <tbody>
-                {result.lineItems.map((item) => {
-                  const style = ROI_CATEGORY_STYLE[item.category];
-                  return (
-                    <tr key={item.key} className="border-b border-cc-brass/15 align-top">
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{item.label}</div>
-                        <div className="text-xs text-cc-steel mt-0.5">{item.methodology}</div>
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${style.bg} ${style.fg}`}>{style.label}</span>
-                      </td>
-                      <td className="py-2 text-right whitespace-nowrap font-medium">{formatCurrency(item.amount)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className="text-right font-semibold mt-2">
+            <h3 className="text-sm font-semibold text-cc-steel mb-3">{result.moduleLabel}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {result.lineItems.map((item) => {
+                const style = ROI_CATEGORY_STYLE[item.category];
+                const Icon = CATEGORY_ICON[item.category];
+                return (
+                  <div key={item.key} className={`rounded-lg p-4 ${style.bg}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-cc-steel">{item.label}</div>
+                        <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-white/60 ${style.fg}`}>
+                          {style.label}
+                        </span>
+                      </div>
+                      <Icon size={18} className={style.fg} />
+                    </div>
+                    <div className="font-display text-2xl mt-3">{formatCurrency(item.amount)}</div>
+                    <p className="text-xs text-cc-steel mt-1">{item.methodology}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-right font-semibold mt-3">
               {result.moduleLabel} subtotal: {formatCurrency(result.totalAnnualRoi)}
             </p>
           </div>
         ))}
       </section>
 
-      {/* 4. ROI verdict */}
-      <section className="rounded-xl bg-cc-cast-iron text-cc-white p-8">
-        <div className="flex items-center gap-2 text-cc-copper text-sm font-semibold uppercase tracking-wide">
-          <Sparkle size={16} weight="fill" /> ROI verdict
-        </div>
-        <div className="mt-4 flex items-baseline gap-2">
-          <CurrencyDollar size={28} className="text-cc-alloy" />
-          <span className="font-display text-5xl text-cc-alloy">{formatCurrency(totalAnnualRoi)}</span>
-        </div>
-        <p className="text-cc-pewter mt-1">Total measured value delivered (gross)</p>
-
-        <div className="mt-5 pt-5 border-t border-white/15 flex items-baseline justify-between">
-          <span className="text-cc-pewter">Net of platform cost</span>
-          <span className="font-display text-2xl">
-            {net.netAnnualRoi !== null ? formatCurrency(net.netAnnualRoi) : "set platform cost to calculate"}
-          </span>
+      {/* 4. ROI verdict scorecard */}
+      <section>
+        <h2 className="font-display text-xl mb-3">ROI verdict</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <ScorecardCard
+            icon={Clock}
+            label="Total hours saved"
+            value={`${formatNumber(Math.round(totalHoursSaved * 10) / 10)} hrs`}
+            description="Admin time returned to the team"
+          />
+          <ScorecardCard
+            icon={CurrencyDollar}
+            label="Labor value created"
+            value={formatCurrency(laborValueCreated)}
+            description="Dollarized time savings"
+          />
+          <ScorecardCard
+            icon={Buildings}
+            label="Vacancy cost avoided"
+            value={formatCurrency(vacancyCostAvoided)}
+            description="From faster time-to-fill"
+          />
+          <ScorecardCard
+            icon={Wallet}
+            label="ClearCo cost"
+            value={platformCostPerYear !== null ? formatCurrency(platformCostPerYear) : "not set"}
+            description="Platform cost for the period"
+          />
+          <ScorecardCard
+            icon={Coins}
+            label="Total value created"
+            value={formatCurrency(totalValueCreated)}
+            description="Labor value + vacancy cost avoided"
+          />
+          <ScorecardCard
+            icon={Sparkle}
+            label="Net ROI"
+            value={net.netAnnualRoi !== null ? formatCurrency(net.netAnnualRoi) : formatCurrency(totalValueCreated)}
+            description={net.netAnnualRoi !== null ? "Total value minus ClearCo cost" : "Gross only — set ClearCo cost for net"}
+            emphasized
+          />
+          <ScorecardCard
+            icon={ChartLineUp}
+            label="ROI multiple"
+            value={roiMultiple !== null ? `${roiMultiple.toFixed(1)}×` : "—"}
+            description="Value per dollar spent"
+          />
+          <ScorecardCard
+            icon={Percent}
+            label="ROI percentage"
+            value={roiPercentage !== null ? `${roiPercentage.toFixed(0)}%` : "—"}
+            description="Net return on platform spend"
+          />
         </div>
       </section>
     </>
