@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/client";
 import { inputClass, labelClass, primaryButtonClass, secondaryLinkClass } from "@/components/formStyles";
+import { BenchmarkFields } from "@/components/BenchmarkFields";
 import { updateAccountContext } from "../../actions";
 
 export default async function EditAccountPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,26 +37,12 @@ export default async function EditAccountPage({ params }: { params: Promise<{ id
           Website
           <input name="website" type="url" defaultValue={account.website ?? ""} className={inputClass} />
         </label>
-        <label className={labelClass}>
-          HR / recruiter hourly rate ($)
-          <input
-            name="hrHourlyRate"
-            type="number"
-            step="0.01"
-            defaultValue={account.hrHourlyRate ?? ""}
-            className={inputClass}
-          />
-        </label>
-        <label className={labelClass}>
-          Cost of vacancy per day ($)
-          <input
-            name="costOfVacancyPerDay"
-            type="number"
-            step="0.01"
-            defaultValue={account.costOfVacancyPerDay ?? ""}
-            className={inputClass}
-          />
-        </label>
+        <BenchmarkFields
+          accountId={account.id}
+          defaultHrHourlyRate={account.hrHourlyRate}
+          defaultCostOfVacancyPerDay={account.costOfVacancyPerDay}
+        />
+
         <label className={labelClass}>
           ClearCo platform cost for the period ($)
           <input
