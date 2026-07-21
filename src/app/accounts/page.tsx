@@ -30,7 +30,7 @@ export default async function AccountsPage() {
         </form>
       </div>
 
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between gap-4 mb-1">
         <h1 className="font-display text-3xl">Accounts</h1>
         <div className="flex items-center gap-3">
           <Link
