@@ -110,7 +110,7 @@ export default async function AccountsPage() {
                 <span className="ml-auto sm:ml-0 flex flex-col items-end gap-1 shrink-0">
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      isSaved ? "bg-cc-verdigris/20 text-cc-verdigris" : "bg-cc-pewter/20 text-cc-steel"
+                      isSaved ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                     }`}
                   >
                     {isSaved ? "Saved" : "Not saved yet"}
