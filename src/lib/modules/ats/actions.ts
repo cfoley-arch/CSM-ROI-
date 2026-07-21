@@ -20,11 +20,11 @@ export const ATS_ACTIONS: AtsAction[] = [
     metricKey: "textsSent",
     assumptionKey: "minutesPerText",
     label: "Texts sent",
-    sources: ["MANUAL"],
+    sources: ["MANUAL", "CSV_CATALYST"],
     notes:
-      'Catalyst export has a "Texts Sent" column, but it is labeled ' +
-      '"Do Not Use" (deprecated) — treated as manual-entry only until a ' +
-      "reliable source is confirmed.",
+      'Catalyst: texts sent (30-day rolling window), from the column labeled ' +
+      '"Do Not Use" in the export — verified usable and confirmed with the ' +
+      "CSM lead before mapping it.",
   },
   {
     metricKey: "emailsSentAutomated",

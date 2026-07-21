@@ -119,10 +119,11 @@ the change in time-to-fill. See the doc comment at the top of
 
 `src/lib/csv/catalystImport.ts` maps the Catalyst "Whitespace Map" export
 onto the ATS module's metrics — only the columns Section 5 confirms are
-covered get mapped; everything else (texts sent, emails, workflow
-automations, time-to-fill, hires) stays manual-entry. Import it either
-through the **Import CSV** page in the app, or via the seed script for
-local dev.
+covered get mapped; everything else (emails, workflow automations,
+time-to-fill, hires) stays manual-entry. Texts sent is also mapped, from
+the export's column labeled "Do Not Use" (verified usable). Import it
+either through the **Import CSV** page in the app, or via the seed script
+for local dev.
 
 The CSV itself is **not committed** (real customer names/ARR/health
 scores) — see `data/README.md`.

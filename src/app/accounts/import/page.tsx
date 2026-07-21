@@ -24,9 +24,9 @@ export default async function ImportCsvPage({
       <h1 className="font-display text-3xl mt-4 mb-1">Import Catalyst CSV</h1>
       <p className="text-sm text-cc-steel mb-6">
         Upload the &quot;Whitespace Map&quot; export. Each row creates or updates one account and
-        adds a dated ATS usage snapshot — covering offers sent, interviews scheduled, background
-        checks initiated, scorecards sent, and onboarding packets launched (Section 5). Texts,
-        emails, workflow automations, time-to-fill, and hires stay manual-entry.
+        adds a dated ATS usage snapshot — covering texts sent, offers sent, interviews scheduled,
+        background checks initiated, scorecards sent, and onboarding packets launched (Section 5).
+        Emails, workflow automations, time-to-fill, and hires stay manual-entry.
       </p>
 
       {created !== undefined && (

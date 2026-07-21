@@ -6,8 +6,12 @@ import { EMPTY_ATS_METRICS, type AtsMetrics } from "@/lib/modules/ats/schema";
  * Maps the Catalyst "Whitespace Map" export (real format reviewed in
  * Section 5) onto the ATS module's metrics. Only columns Section 5
  * confirms are covered get mapped; everything else stays null so the CSM
- * fills it in manually (texts sent, emails sent, workflow automations,
- * time-to-fill, hires).
+ * fills it in manually (emails sent, workflow automations, time-to-fill,
+ * hires).
+ *
+ * Texts sent maps from "Do Not Use: Texts - Sent Last 30" — the export's
+ * only 30-day texts-sent column, despite its "Do Not Use" name (verified
+ * usable; confirmed with the CSM lead before mapping it).
  *
  * All the covered columns are 30-day rolling windows, so a snapshot from
  * this importer represents "last 30 days as of the import date" — matching
@@ -19,6 +23,7 @@ const CATALYST_COLUMNS = {
   industry: "Industry",
   csmName: "Customer Success Manager",
   recruitingSubscriptions: "Recruiting Subscriptions",
+  textsSent30d: "Do Not Use: Texts - Sent Last 30",
   offersSent30d: "Offer Letters Sent Last 30 Days (pendo)",
   interviews1on1Scheduled30d: "1:1 Interviews Scheduled Within 30 Days",
   interviewsMultiScheduled30d: "Multi Interviewer Scheduled Within 30 Days",
@@ -76,6 +81,7 @@ export function mapCatalystRow(row: CatalystRow): MappedCatalystAccount {
 
   const ats: AtsMetrics = {
     ...EMPTY_ATS_METRICS,
+    textsSent: parseNullableNumber(row[CATALYST_COLUMNS.textsSent30d]),
     offersSent: parseNullableNumber(row[CATALYST_COLUMNS.offersSent30d]),
     interviewsScheduled: sumNullable(
       parseNullableNumber(row[CATALYST_COLUMNS.interviews1on1Scheduled30d]),
