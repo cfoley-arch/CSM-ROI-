@@ -59,6 +59,9 @@ export function ReportPdfImport({ accountId }: { accountId: string }) {
         formData.append("files", file);
       }
       const res = await fetch(`/api/accounts/${accountId}/import-report`, { method: "POST", body: formData });
+      if (!res.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("The server didn't respond as expected. Please try again in a moment.");
+      }
       const data = (await res.json()) as ImportPreviewResponse;
       if (!res.ok) throw new Error(data.error ?? "Import failed.");
       setPreview(data);
