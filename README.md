@@ -1,121 +1,165 @@
-# CSM ROI Calculator
+# CSM ROI App
 
-An interactive React dashboard for calculating the ROI of ATS (Applicant Tracking System) implementations using AI-powered insights.
+A Customer Success ROI calculator for ClearCompany CSMs — generates a
+customer-facing, print/QBR-ready ROI statement for one account at a time.
+Full spec: `csm-roi-app-build-plan.md` (shared separately; not committed —
+see Section 9 #11 on sanitizing real customer data before it leaves an
+internal environment).
 
-## Features
+**Status:** Phase 1 (ATS module) is functionally complete against the v1
+scope in Section 3 — data model, generic module system, ATS calc engine,
+manual entry, in-app CSV import, persisted/frozen statements, PDF export,
+AI-generated QBR narrative, and persona-aware framing are all built.
+Gong integration is still blocked on IT credentials (Section 9 #7).
 
-✨ **CSM Copilot**
-- Auto-detect industry from website
-- Auto-calculate vacancy costs and recruiter rates using Gemini AI
-- Generate professional QBR emails
-- Create actionable CSM playbooks
+## Stack
 
-📊 **ROI Analytics**
-- Compare baseline vs. current period metrics
-- Calculate hiring velocity value (cost of vacancy savings)
-- Calculate recruiter efficiency value (time saved)
-- Track adoption trends across key metrics
+- **Next.js 16** (App Router, TypeScript) — see `AGENTS.md` before touching
+  routing/data-fetching conventions if anything looks unfamiliar; this
+  version has real breaking changes vs. older Next.js knowledge.
+- **Prisma 7 + Postgres** (`@prisma/adapter-pg`).
+- **Auth.js v5** (Credentials provider, JWT sessions) — one login per CSM,
+  self-service via `/register`.
+- **Anthropic API** (`@anthropic-ai/sdk`, `claude-opus-4-8`) for the QBR
+  email draft + talk track narrative — server-side only.
+- **Zod** for module input/assumption validation.
+- **Vitest** for unit tests.
 
-📈 **Interactive Dashboard**
-- Real-time ROI calculations
-- Customizable assumptions (time saved per action)
-- Period-by-period metric tracking
-- Visual adoption trend indicators
+## Deploying to Vercel (no terminal required)
 
-🎨 **Export & Sharing**
-- Download scorecards as PNG images
-- Copy AI-generated content to clipboard
-- Professional client presentation ready
+1. **Import this repo.** Vercel dashboard → **Add New** → **Project** →
+   select `cfoley-arch/CSM-ROI-` → branch
+   `claude/clearcompany-csr-roi-app-1rvr8a`.
+2. **Create a Postgres database.** Same project → **Storage** tab →
+   **Create Database** → Postgres. This automatically sets the
+   `DATABASE_URL` environment variable — no connection string to copy by
+   hand. (The build command already runs `prisma migrate deploy` — see
+   `package.json` — so the database schema applies automatically on every
+   deploy; no manual migration step.)
+3. **Add environment variables** (Project → Settings → Environment
+   Variables):
+   - `AUTH_SECRET` — generate one at
+     [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32)
+     or any random 32+ character string.
+   - `ANTHROPIC_API_KEY` — optional, only needed for "Generate QBR
+     narrative." Without it, that one button shows a clear error banner
+     instead of working; nothing else is affected.
+4. **Deploy** (or redeploy, if step 2 happened after the first deploy).
+   Once it's live, open the URL, click **Create an account** on the login
+   page to make your own CSM login (no seed script needed), then
+   **Import CSV** from the Accounts page to load the real Catalyst export.
 
-## Quick Start
+⚠️ **Registration is currently open to anyone with the deployed URL** —
+fine for testing with a link you control, but lock it down (an invite
+code, or disabling `/register`) before sharing more broadly.
 
-### Prerequisites
-- Node.js 16+
-- npm or yarn
+## Deploying to Netlify (no terminal required)
 
-### Installation
+Netlify also works — it fully supports Next.js 16's App Router and Server
+Actions via its Next.js Runtime (auto-detected, no config file needed).
+
+1. **Import this repo.** Netlify dashboard → **Add new site** → **Import an
+   existing project** → GitHub → select `cfoley-arch/CSM-ROI-` → branch
+   `claude/clearcompany-csr-roi-app-1rvr8a`. Leave build settings on
+   Netlify's Next.js defaults.
+2. **Create a Postgres database.** Site → **Database** (or **Extensions**
+   tab, depending on what your dashboard shows) → provision **Netlify
+   Database** (powered by Neon). This sets a connection-string environment
+   variable automatically — `src/lib/db/client.ts` and `prisma.config.ts`
+   both check `DATABASE_URL` first and fall back to `NETLIFY_DATABASE_URL`,
+   so it works either way Netlify names it.
+   - If the deploy still fails with a "DATABASE_URL is not set" error,
+     open Site → **Environment variables**, find whatever connection
+     string variable the database step created, and copy its value into a
+     new variable literally named `DATABASE_URL`.
+3. **Add environment variables** (Site → **Environment variables**):
+   - `AUTH_SECRET` — any random 32+ character string.
+   - `ANTHROPIC_API_KEY` — optional, only needed for "Generate QBR
+     narrative."
+4. **Deploy.** Once live, open the URL, click **Create an account**, then
+   **Import CSV** from the Accounts page.
+
+Same registration caveat as above applies.
+
+## The module system
+
+Per Section 8 of the build plan, every ROI module (ATS today; Onboarding,
+Performance, LMS, Background Checks, Compensation later) is a self-contained
+config satisfying `ModuleDefinition` (`src/lib/modules/types.ts`): a metrics
+schema, an assumptions schema with editable defaults, and a pure
+`calculate()` function. Adding a new module is one new folder under
+`src/lib/modules/` plus one line in `src/lib/modules/registry.ts` — no
+database or screen changes.
+
+The ATS module (`src/lib/modules/ats/`) implements Section 4 Module 1's
+granular per-action breakdown: one "Admin Time Savings" line per action
+type (texts, emails, interviews, offers, background checks, workflow
+automations, scorecards, onboarding packets), each driven by the *current*
+period's volume, plus a delta-based "Faster Hiring Productivity" line from
+the change in time-to-fill. See the doc comment at the top of
+`src/lib/modules/ats/calculate.ts` for the confirmed math.
+
+## Data model
+
+- `Account` — one customer, with shared client-context fields (HR hourly
+  rate, cost of vacancy/day, platform cost).
+- `AccountModule` — which modules are active for an account + assumption
+  overrides.
+- `MetricSnapshot` — a dated set of usage metrics for one account + module.
+  Per Section 5's resolved solve for the Catalyst CSV's snapshot-only
+  limitation, the app itself is the timeline: each import or manual entry
+  adds a snapshot, and a statement's baseline/current periods are just the
+  two most recent snapshots.
+- `ImportBatch` — one CSV upload event, fanning out into many snapshots.
+- `RoiStatement` — a persisted, point-in-time ROI statement (frozen inputs
+  + computed results, plus optional persona tags and AI narrative), for
+  "CSMs can return later and update numbers."
+
+## Real reference data
+
+`src/lib/csv/catalystImport.ts` maps the Catalyst "Whitespace Map" export
+onto the ATS module's metrics — only the columns Section 5 confirms are
+covered get mapped; everything else (emails, workflow automations,
+time-to-fill, hires) stays manual-entry. Texts sent is also mapped, from
+the export's column labeled "Do Not Use" (verified usable). Import it
+either through the **Import CSV** page in the app, or via the seed script
+for local dev.
+
+The CSV itself is **not committed** (real customer names/ARR/health
+scores) — see `data/README.md`.
+
+## Local development
+
+Requires a local Postgres instance (`brew install postgresql` +
+`brew services start postgresql`, or Docker, or any hosted free-tier
+Postgres).
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
 ```
 
-The app will open at `http://localhost:3000`
+Create `.env`:
 
-## Configuration
-
-### Gemini API Setup
-
-To use the AI features (industry detection, playbook generation, etc.):
-
-1. Get a free API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Open `src/App.jsx` and add your API key to the `callGeminiAPI` function:
-
-```javascript
-const apiKey = "YOUR_GEMINI_API_KEY_HERE";
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/csmroi"
+AUTH_SECRET="<output of: npx auth secret>"
+# ANTHROPIC_API_KEY="sk-ant-..."   # optional, for narrative generation
 ```
 
-## Usage
-
-1. **Enter Foundation Details**
-   - Website URL (for auto-industry detection)
-   - Industry classification
-   - Recruiter hourly rate
-   - Cost of vacancy per day
-   - Handover/sales cost
-
-2. **Set Time Assumptions**
-   - Minutes saved per action (texts, offers, interviews, etc.)
-
-3. **Compare Periods**
-   - Baseline: Your current state metrics
-   - Current: Post-implementation metrics
-
-4. **Generate Insights**
-   - QBR Email: Professional quarterly review summary
-   - Playbook: 3 actionable CSM recommendations
-   - Scorecard: Downloadable PNG for client presentations
-
-## Key Metrics
-
-- **Total Gross Value** = Hiring Velocity + Recruiter Efficiency
-- **Hiring Velocity** = Days Saved per Hire × Cost of Vacancy
-- **Recruiter Efficiency** = Hours Saved × Recruiter Rate
-- **ROI %** = (Net Value / Sales Cost) × 100
-
-## Tech Stack
-
-- **React 18** - UI framework
-- **Tailwind CSS** - Styling
-- **Vite** - Build tool & dev server
-- **Lucide React** - Icon library
-- **Gemini API** - AI features
-- **html2canvas** - PNG export
-
-## Project Structure
-
-```
-├── src/
-│   ├── App.jsx          # Main application component
-│   ├── main.jsx         # React entry point
-│   └── index.css        # Global styles
-├── index.html           # HTML template
-├── package.json         # Dependencies & scripts
-├── vite.config.js       # Vite configuration
-├── tailwind.config.js   # Tailwind configuration
-└── postcss.config.js    # PostCSS configuration
+```bash
+npm run db:migrate   # applies prisma/migrations
+npm run db:seed       # creates the dev CSM login + imports the CSV if present at data/catalyst-whitespace-map.csv
+npm run dev             # http://localhost:3000
+npm test                # unit tests
 ```
 
-## License
+Dev login (if seeded): `cfoley@clearcompany.com` / `changeme-dev-only` —
+change this immediately, it's a dev-only default.
 
-MIT
+## Open items (Section 9)
 
-## Support
-
-For issues or feature requests, please open an issue on the repository.
+- **#7** Gong API credential timeline — pending IT. Gong-sourced fields
+  stay out of scope until credentials land.
+- **#12** Whether ClearInsights/ThoughtSpot can expose time-to-fill and
+  hires via API — until resolved, both stay manual-entry fields in the ATS
+  module.

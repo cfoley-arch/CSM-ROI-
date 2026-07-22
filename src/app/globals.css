@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * ClearCo brand system (Section 6 of the build plan). Primary/platinum/cast
+ * iron are the visual foundation; alloy/copper are signature accents —
+ * "use sparingly, high-impact only" (the ROI headline, mainly). This is a
+ * formal, print/QBR-ready statement, not a general app UI, so there is
+ * deliberately no dark-mode variant here.
+ */
+:root {
+  --cc-white: #ffffff;
+  --cc-platinum: #faf8f5;
+  --cc-cast-iron: #37352a;
+
+  --cc-alloy: #ffa680;
+  --cc-copper: #ff7a52;
+
+  --cc-bronze: #6c3a2a;
+  --cc-verdigris: #9eb4ab;
+  --cc-steel: #697771;
+  --cc-pewter: #a1b4ba;
+  --cc-white-gold: #f4ebd7;
+  --cc-brass: #c3b497;
+
+  --background: var(--cc-white);
+  --foreground: var(--cc-cast-iron);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-cc-white: var(--cc-white);
+  --color-cc-platinum: var(--cc-platinum);
+  --color-cc-cast-iron: var(--cc-cast-iron);
+  --color-cc-alloy: var(--cc-alloy);
+  --color-cc-copper: var(--cc-copper);
+  --color-cc-bronze: var(--cc-bronze);
+  --color-cc-verdigris: var(--cc-verdigris);
+  --color-cc-steel: var(--cc-steel);
+  --color-cc-pewter: var(--cc-pewter);
+  --color-cc-white-gold: var(--cc-white-gold);
+  --color-cc-brass: var(--cc-brass);
+
+  /* Display alternative for GT Ultra Median, per Section 6 (not web-licensed). */
+  --font-display: var(--font-marcellus);
+  /* Body stays plain Arial, per Section 6 — no web-font substitute specified for body copy. */
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/*
+ * PDF export (Section 3) is the browser's native print-to-PDF on this same
+ * page — no server-rendering pipeline. Without color-adjust, browsers strip
+ * background colors on print by default, which would turn the ROI verdict's
+ * cast-iron/copper card and the category badges into plain black-on-white.
+ */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 0.6in;
+  }
+}

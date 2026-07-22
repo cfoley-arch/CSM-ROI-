@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+//
+// Postgres (moved off the original SQLite dev setup so this deploys on
+// standard hosted Postgres — e.g. Vercel Postgres, Neon). Enums are
+// deliberately avoided anyway — module keys and snapshot sources are plain
+// strings validated in application code (see src/lib/modules/registry.ts).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A ClearCompany CSM. Individual login per Section 9, #5.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts      Account[]
+  importBatches ImportBatch[]
+  statements    RoiStatement[]
+}
+
+/// One customer account a CSM is tracking. Client-context fields here apply
+/// across every active module (Section 5, "Manual entry — Client Context").
+model Account {
+  id   String @id @default(cuid())
+  name String
+
+  // Client context (Section 5) — shared across all modules for this account.
+  website             String?
+  industry            String?
+  hrHourlyRate        Float?
+  costOfVacancyPerDay Float?
+  platformCostPerYear Float?
+
+  // Stable external key from the Catalyst "Whitespace Map" export's Object Id
+  // column, so re-importing the CSV updates the same account instead of
+  // creating duplicates.
+  catalystObjectId String? @unique
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  modules    AccountModule[]
+  snapshots  MetricSnapshot[]
+  statements RoiStatement[]
+
+  @@index([ownerId])
+}
+
+/// Generic module toggle + per-module assumption overrides, per Section 8:
+/// "Build the module system generically... An account stores a list of
+/// active modules + each module's input data (as JSON)." `config` holds
+/// editable assumptions (e.g. ATS's minutes-saved-per-action map); the
+/// period-over-period usage data itself lives in MetricSnapshot below.
+model AccountModule {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  /// e.g. "ATS" — matches a key in the module registry.
+  moduleKey String
+  isActive  Boolean @default(true)
+
+  /// Module-specific assumption overrides (falls back to the module's
+  /// defaultAssumptions when a key is absent).
+  config Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, moduleKey])
+}
+
+/// One dated import event — a single Catalyst CSV upload covers many
+/// accounts at once (Section 5's Whitespace Map export), so the batch is
+/// the parent and each affected account gets its own MetricSnapshot row.
+model ImportBatch {
+  id String @id @default(cuid())
+
+  /// e.g. "CATALYST_WHITESPACE_MAP", "MANUAL", "GONG"
+  source   String
+  fileName String?
+
+  importedById String
+  importedBy   User     @relation(fields: [importedById], references: [id])
+  importedAt   DateTime @default(now())
+  rowCount     Int
+
+  snapshots MetricSnapshot[]
+}
+
+/// A dated set of usage metrics for one account + one module. Per Section 5's
+/// resolved solve for the Catalyst CSV's snapshot-only limitation: "the app
+/// becomes the timeline" — each import (or manual entry) creates a new
+/// snapshot, and a statement's baseline/current periods are just two
+/// snapshots ordered by capturedAt (usually the previous one and the latest).
+model MetricSnapshot {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  moduleKey String
+
+  /// "MANUAL" | "CSV_CATALYST" | "GONG" | "PDF_REPORT"
+  source String
+
+  /// The as-of date this snapshot represents (not the row's createdAt).
+  capturedAt DateTime
+
+  /// Raw metric key -> value map, module-specific
+  /// (e.g. { "textsSent": 900, "offersSent": 42, ... }).
+  metrics Json
+
+  importBatchId String?
+  importBatch   ImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([accountId, moduleKey, capturedAt])
+}
+
+/// A generated, persisted ROI statement instance — Section 1's "persisted
+/// accounts... CSMs can return later and update numbers," captured as a
+/// point-in-time record of exactly what was shown in a QBR.
+model RoiStatement {
+  id        String  @id @default(cuid())
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  statementPeriodLabel String?
+
+  /// moduleKey -> MetricSnapshot.id used as baseline/current for this statement.
+  baselineSnapshotIds Json
+  currentSnapshotIds  Json
+
+  /// Frozen inputs + assumptions the calc engine was run with.
+  resolvedInputs Json
+  /// Calc engine output: per-module category breakdown + grand total.
+  results        Json
+
+  /// Persona tags per Section 7 (CHRO, VP Talent/HR, Recruiter, L&D), optional.
+  personaTags Json?
+  /// AI-generated narrative blocks (Section 6), optional/future.
+  narrative   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([accountId, createdAt])
+}
