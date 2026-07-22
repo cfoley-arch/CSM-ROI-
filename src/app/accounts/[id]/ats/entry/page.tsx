@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/client";
 import { inputClass, labelClass, primaryButtonClass, secondaryLinkClass } from "@/components/formStyles";
+import { ReportPdfImport } from "@/components/ReportPdfImport";
 import { AtsModule } from "@/lib/modules/ats";
 import { saveAtsSnapshot } from "../../../actions";
 
@@ -27,6 +28,11 @@ export default async function AtsEntryPage({ params }: { params: Promise<{ id: s
         snapshot as the baseline (Section 5).
       </p>
 
+      <div className="mb-8">
+        <ReportPdfImport accountId={account.id} />
+      </div>
+
+      <h2 className="font-display text-lg mb-3">Or enter manually</h2>
       <form action={saveAtsSnapshot} className="flex flex-col gap-4">
         <input type="hidden" name="accountId" value={account.id} />
 

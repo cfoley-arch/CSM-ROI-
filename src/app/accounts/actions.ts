@@ -1,12 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/client";
 import { parseFormNumber, parseFormString } from "@/lib/forms";
 import { ATS_ACTIONS } from "@/lib/modules/ats/actions";
 import { ATS_DEFAULT_ASSUMPTIONS } from "@/lib/modules/ats/defaults";
 import { computeLiveStatement } from "@/lib/modules/accountStatement";
+import { getModule } from "@/lib/modules/registry";
 
 async function requireOwnedAccount(accountId: string) {
   const session = await auth();
@@ -164,4 +166,48 @@ export async function generateStatement(formData: FormData) {
   });
 
   redirect(`/accounts/${account.id}/statements/${statement.id}`);
+}
+
+/**
+ * Commits a report-PDF-import preview to the database — one MetricSnapshot
+ * per module the upload touched (a single upload batch can cover both ATS
+ * and Recruiter Activity at once, e.g. a Time to Fill PDF plus a Recruiter
+ * Activity Report PDF together). Called directly from the client-side
+ * preview component (not a <form action>), since the preview holds editable
+ * values across multiple modules at once rather than one flat field list.
+ */
+export async function saveModuleSnapshotsAction(params: {
+  accountId: string;
+  capturedAt?: string;
+  moduleMetrics: Record<string, Record<string, number | null>>;
+}) {
+  const { account } = await requireOwnedAccount(params.accountId);
+  const capturedAt = params.capturedAt ? new Date(params.capturedAt) : new Date();
+
+  for (const [moduleKey, metrics] of Object.entries(params.moduleMetrics)) {
+    const mod = getModule(moduleKey);
+    // A snapshot must carry every schema key (as null if unknown for this
+    // period) — same convention the manual-entry form and CSV importer
+    // already follow — or downstream metricsSchema parsing fails on the
+    // fields this particular report batch didn't touch.
+    const fullMetrics = { ...mod.emptyMetrics, ...metrics };
+
+    await prisma.metricSnapshot.create({
+      data: {
+        accountId: account.id,
+        moduleKey,
+        source: "PDF_REPORT",
+        capturedAt,
+        metrics: fullMetrics,
+      },
+    });
+
+    await prisma.accountModule.upsert({
+      where: { accountId_moduleKey: { accountId: account.id, moduleKey } },
+      create: { accountId: account.id, moduleKey, isActive: true, config: {} },
+      update: { isActive: true },
+    });
+  }
+
+  revalidatePath(`/accounts/${account.id}`);
 }
