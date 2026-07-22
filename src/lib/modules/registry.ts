@@ -1,5 +1,6 @@
 import type { ModuleDefinition, ModuleResult } from "./types";
 import { AtsModule } from "./ats";
+import { RecruiterActivityModule } from "./recruiterActivity";
 
 /**
  * Every module the calculator knows how to compute. Per Section 8, adding
@@ -9,6 +10,7 @@ import { AtsModule } from "./ats";
  */
 export const MODULE_REGISTRY: Record<string, ModuleDefinition> = {
   ATS: AtsModule as ModuleDefinition,
+  RECRUITER_ACTIVITY: RecruiterActivityModule as ModuleDefinition,
 };
 
 export function getModule(moduleKey: string): ModuleDefinition {

@@ -78,8 +78,8 @@ export interface ModuleDefinition<
 export interface ModuleMetricField {
   key: string;
   label: string;
-  /** Where this field's value can come from today. */
-  sources: Array<"MANUAL" | "CSV_CATALYST" | "GONG">;
+  /** Where this field's value can come from today. PDF_REPORT covers any ClearCompany liveboard report PDF import (see src/lib/reportImport) — multiple report types share this one source label. */
+  sources: Array<"MANUAL" | "CSV_CATALYST" | "GONG" | "PDF_REPORT">;
   notes?: string;
 }
 

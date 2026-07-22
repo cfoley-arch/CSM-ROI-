@@ -114,7 +114,7 @@ model MetricSnapshot {
 
   moduleKey String
 
-  /// "MANUAL" | "CSV_CATALYST" | "GONG"
+  /// "MANUAL" | "CSV_CATALYST" | "GONG" | "PDF_REPORT"
   source String
 
   /// The as-of date this snapshot represents (not the row's createdAt).
